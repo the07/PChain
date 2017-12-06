@@ -8,7 +8,7 @@ import requests
 from klein import Klein
 from uuid import uuid4
 
-FULL_NODE_PORT = "32343"
+FULL_NODE_PORT = "32363"
 NODES_URL = "http://{}:{}/nodes" # GET RETURNS ALL THE NODES, POST ADDS NODE
 USERS_URL = "http://{}:{}/users" # GET RETURNS ALL THE USER, POST ADDS NEW USER
 USER_URL = "http://{}:{}/{}" # GET RETURNS USER DATA, POST EDITS USER DATA
@@ -192,6 +192,7 @@ class Node:
         else:
             user = User(user_json['_address'], user_json['_name'], user_json['_balance'], user_json['_data'])
             self.peoplechain.add_user(user)
+            print ("Ner user added to chain, now broadcasting.")
             self.broadcast_user(user, sending_node)
             response = {
                 'success': "User added"
