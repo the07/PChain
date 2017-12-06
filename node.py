@@ -32,7 +32,6 @@ class Node:
             self.peoplechain = Peoplechain()
             self.full_nodes.add(self.my_node())
         else:
-            self.full_nodes.add(self.my_node())
             self.add_node(full_node)
             self.request_nodes(full_node, FULL_NODE_PORT)
             self.request_nodes_from_all()
@@ -45,7 +44,8 @@ class Node:
                     longest = len(user_chain)
 
             self.peoplechain = Peoplechain(remote_users)
-
+            self.full_nodes.add(self.my_node())
+            
         print ("\nFull node server started...\n\n")
         self.app.run('0.0.0.0', FULL_NODE_PORT)
 
