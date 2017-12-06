@@ -126,6 +126,8 @@ class Node:
             "user": user.to_json()
         }
 
+        data = json.dumps(data)
+
         for node in self.full_nodes:
             if node == self.my_node():
                 continue
