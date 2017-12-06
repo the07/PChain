@@ -4,6 +4,7 @@ import socket
 from user import User
 from blockchain import Peoplechain
 
+import requests
 from klein import Klein
 from uuid import uuid4
 
@@ -31,6 +32,7 @@ class Node:
             self.peoplechain = Peoplechain()
             self.full_nodes.add(self.my_node())
         else:
+            self.add_node(full_node)
             self.request_nodes(full_node, FULL_NODE_PORT)
             self.request_nodes_from_all()
             self.broadcast_node()
@@ -47,6 +49,8 @@ class Node:
         self.app.run('0.0.0.0', FULL_NODE_PORT)
 
     def request_nodes(self, node, port):
+        if node == self.my_node():
+            return None
         url = NODES_URL.format(node, port)
         try:
             response = requests.get(url)
@@ -149,14 +153,14 @@ class Node:
                 return users
         except requests.exceptions.RequestException as re:
             pass
-        return None
+        return 0
 
     @app.route('/nodes', methods=['GET'])
     def get_nodes(self, request):
         response = {
             "full_nodes": list(self.full_nodes)
         }
-        return json.dumps(response)
+        return json.dumps(response).encode('utf-8')
 
     @app.route('/nodes', methods=['POST'])
     def post_nodes(self, request):
@@ -166,11 +170,11 @@ class Node:
         response = {
             "message": "Node registered"
         }
-        return json.dumps(response)
+        return json.dumps(response).encode('utf-8')
 
     @app.route('/users', methods=['GET'])
     def get_users(self, request):
-        return json.dumps([user.to_json() for user in self.peoplechain.get_all_users()])
+        return json.dumps([user.to_json() for user in self.peoplechain.get_all_users()]).encode('utf-8')
 
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
@@ -180,7 +184,7 @@ class Node:
         response = {
             'success': "User added"
         }
-        return json.dumps(response)
+        return json.dumps(response).encode('utf-8')
 
     @app.route('/user/<address>', methods=['GET'])
     def get_user_by_address(self, request, address):
@@ -194,7 +198,7 @@ class Node:
             response = {
                 "message": "User not found"
             }
-            return json.dumps(response)
+            return json.dumps(response).encode('utf-8')
 
     @app.route('/user/<address>', methods=['POST'])
     def edit_user_by_address(self, request, address):
