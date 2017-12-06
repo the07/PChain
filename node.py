@@ -174,7 +174,7 @@ class Node:
 
     @app.route('/users', methods=['GET'])
     def get_users(self, request):
-        return json.dumps([user.to_json() for user in self.peoplechain.get_all_users()]).encode('utf-8')
+        return json.dumps([user.__dict__ for user in self.peoplechain.get_all_users()]).encode('utf-8')
 
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
