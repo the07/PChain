@@ -33,7 +33,7 @@ class User:
 
     @classmethod
     def from_json(cls, user_json):
-        user = cls.__init__(user_json['address'], user_json['name'], user_json.get('balance', None), user_json.get('data', None))
+        user = cls.__init__(user_json['_address'], user_json['_name'], user_json.get('_balance', None), user_json.get('_data', None))
         return user
 
     def setname(self, value):
@@ -49,7 +49,7 @@ class User:
         return
 
     def to_json(self):
-        return json.dumps(self, default=lambda o: {key.lstrip('_'): value for key, value in o.__dict__.items()}, sort_keys=True)
+        return json.dumps(self, default=lambda o: {key: value for key, value in o.__dict__.items()}, sort_keys=True)
 
     def __repr__(self):
         return "<User {}>".format(self._address)
