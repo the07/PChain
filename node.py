@@ -126,8 +126,6 @@ class Node:
             "user": user.to_json()
         }
 
-        data = json.dumps(data)
-
         for node in self.full_nodes:
             if node == self.my_node():
                 continue
@@ -184,7 +182,10 @@ class Node:
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
         body = json.loads(request.content.read())
-        user = User.from_json(json.loads(body['user']))
+        print (type(body))
+        user_json = json.loads(body['user'])
+        print (type(user_json))
+        user = User(user_json['_address'], user_json['_name'], user_json['_balance'], user_json['_data'])
         self.peoplechain.add_user(user)
         self.broadcast_user(user)
         response = {
