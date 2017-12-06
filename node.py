@@ -146,9 +146,9 @@ class Node:
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                users_dict = json.loads(response.json())
-                for user_dict in users_dict:
-                    user = User(user_dict['address'], user_dict['name'], user_dict['address'], user_dict['data'])
+                users_list = response.json()
+                for user_list in users_list:
+                    user = User(user_list['_address'], user_list['_name'], user_list['_balance'], user_list['_data'])
                     users.append(user)
                 return users
         except requests.exceptions.RequestException as re:
