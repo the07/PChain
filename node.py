@@ -32,6 +32,7 @@ class Node:
             self.peoplechain = Peoplechain()
             self.full_nodes.add(self.my_node())
         else:
+            self.full_nodes.add(self.my_node())
             self.add_node(full_node)
             self.request_nodes(full_node, FULL_NODE_PORT)
             self.request_nodes_from_all()
@@ -126,6 +127,8 @@ class Node:
         }
 
         for node in self.full_nodes:
+            if node == self.my_node():
+                continue
             url = USERS_URL.format(node, FULL_NODE_PORT)
             try:
                 response = requests.post(url, json=data)
@@ -181,6 +184,7 @@ class Node:
         body = json.loads(request.content.read())
         user = User.from_json(body['user'])
         self.peoplechain.add_user(user)
+        self.broadcast_user(user)
         response = {
             'success': "User added"
         }
