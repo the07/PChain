@@ -45,7 +45,7 @@ class Node:
 
             self.peoplechain = Peoplechain(remote_users)
             self.full_nodes.add(self.my_node())
-            
+
         print ("\nFull node server started...\n\n")
         self.app.run('0.0.0.0', FULL_NODE_PORT)
 
@@ -182,7 +182,7 @@ class Node:
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
         body = json.loads(request.content.read())
-        user = User.from_json(body['user'])
+        user = User.from_json(json.loads(body['user']))
         self.peoplechain.add_user(user)
         self.broadcast_user(user)
         response = {
