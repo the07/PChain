@@ -181,7 +181,7 @@ class Node:
 
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
-        body = json.loads(request.content.decode('utf-8'.read()))
+        body = json.loads(request.content.decode('utf-8').read()))
         print (type(body))
         user_json = json.loads(body['user'])
         print (type(user_json))
