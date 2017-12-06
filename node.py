@@ -8,7 +8,7 @@ import requests
 from klein import Klein
 from uuid import uuid4
 
-FULL_NODE_PORT = "21007"
+FULL_NODE_PORT = "32333"
 NODES_URL = "http://{}:{}/nodes" # GET RETURNS ALL THE NODES, POST ADDS NODE
 USERS_URL = "http://{}:{}/users" # GET RETURNS ALL THE USER, POST ADDS NEW USER
 USER_URL = "http://{}:{}/{}" # GET RETURNS USER DATA, POST EDITS USER DATA
@@ -181,17 +181,20 @@ class Node:
 
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
-        body = json.loads(request.content.decode('utf-8').read()))
-        print (type(body))
+        body = json.loads(request.content.read().decode('utf-8'))
         user_json = json.loads(body['user'])
-        print (type(user_json))
-        user = User(user_json['_address'], user_json['_name'], user_json['_balance'], user_json['_data'])
-        self.peoplechain.add_user(user)
-        self.broadcast_user(user)
-        response = {
-            'success': "User added"
-        }
-        return json.dumps(response).encode('utf-8')
+        print ("New user data arrived")
+        user_address = user_json['_address']
+        if self.peoplechain.get_user_by_address(user_address):
+            return
+        else:
+            user = User(user_json['_address'], user_json['_name'], user_json['_balance'], user_json['_data'])
+            self.peoplechain.add_user(user)
+            self.broadcast_user(user)
+            response = {
+                'success': "User added"
+            }
+            return json.dumps(response).encode('utf-8')
 
     @app.route('/user/<address>', methods=['GET'])
     def get_user_by_address(self, request, address):
