@@ -188,6 +188,7 @@ class Node:
 
     @app.route('/nodes', methods=['GET'])
     def get_nodes(self, request):
+        self.request_nodes_from_all()
         response = {
             "full_nodes": list(self.full_nodes)
         }
@@ -291,4 +292,8 @@ class Node:
 
 if __name__ == '__main__':
 
-    node = Node()
+    host = str(input("Enter host to connect to network (Leave blank to start a new chain)"))
+    if host:
+        node = Node(host)
+    else:
+        node = Node()
