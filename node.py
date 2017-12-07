@@ -190,12 +190,15 @@ class Node:
         print ("New user data arrived")
         user_address = user_json['_address']
         if self.peoplechain.get_user_by_address(user_address):
-            return
+            response = {
+             "message": "user already exists"
+            }
+
+            return json.dumps(response)
         else:
             user = User(user_json['_address'], user_json['_name'], user_json['_balance'], user_json['_data'])
             self.peoplechain.add_user(user)
             print ("New user added to chain, now broadcasting.")
-            self.broadcast_user(user, sending_node)
             response = {
                 'success': "User added"
             }

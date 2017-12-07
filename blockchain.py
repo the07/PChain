@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class Peoplechain():
 
     users = []
+    unconfirmed_users = []
 
     def __init__(self, users=None):
 
@@ -47,6 +48,10 @@ class Peoplechain():
             self.users.append(user)
             return True
         return False
+
+    def push_unconfirmed_user(self, user):
+        self.unconfirmed_users.append(user)
+        return True
 
     def get_size(self):
         return len(self.users)
