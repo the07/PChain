@@ -103,9 +103,10 @@ class Client:
 
             print ("Mining changes to other nodes")
             user_change_url = USER_CHANGE_URL.format(self.node, FULL_NODE_PORT, address)
-            response = requests.get(user_change_url)
+            change_response = requests.get(user_change_url)
 
-            print (response.json()["message"])
+            print (change_response.json()['message'])
+            print ('\n')
 
 
     def view_user(self):

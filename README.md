@@ -1,24 +1,32 @@
 # PChain
 
-Install Python 3
+##ABOUT:
 
-install from requirement.txt
+**Peopleschain** is an idea in testing, to create a decentralised database which can be authenticated by various organizations, ex, your school, your employer or the government. This saves businesses a lot of time, energy and resource they spend on auditing a Person.
 
-Run node.py (without host to start a new blockchain)
-Run client.py
+##Instructions:
 
-#TODO: 
+> Install Python 3
+> install from requirement.txt
+> Run node.py (without host to start a new blockchain)
+> Run client.py
 
-|| || User signature - Required for edits and transfers
+##TODO:
 
-|| || Different kinds of node
+- [ ] Error handling
 
-|| || Proof of consensus(for user validation) + Proof of work(For node validation)
+- [ ] Store Blockchain in a file, synchronize with other nodes on startup.
 
-|| || Allow transfers
+- [ ] User signature - Required for edits and transfers.
 
-|| || Node signatures to validate profile before they are added to the chain
+- [ ] Different kinds of node.
 
-|| || Fix code nuances
+- [ ] Proof of consensus(for user validation) + Proof of work(For node validation).
 
-|| || Comments
+- [ ] Allow transfers.
+
+- [ ] Node signatures to validate profile before they are added to the chain.
+
+- [ ] Fix code nuances.
+
+- [ ] Comments.

@@ -129,6 +129,7 @@ class Node:
         }
 
         for node in self.full_nodes:
+            print ('Broadcasting\n')
             if  node == sending_node:
                 continue
             url = USERS_URL.format(node, FULL_NODE_PORT)
@@ -155,6 +156,7 @@ class Node:
         }
 
         for node in self.full_nodes:
+            print ('Broadcasting\n')
             if node == sending_node:
                 continue
             url = USER_URL.format(node, FULL_NODE_PORT, user.address)
@@ -285,7 +287,7 @@ class Node:
             host = self.my_node()
             self.broadcast_user_change(user, host)
             response = {
-                "Message": "User change successfully broadcasted to other nodes"
+                "message": "User change successfully broadcasted to other nodes"
             }
             return json.dumps(response).encode('utf-8')
 
