@@ -11,8 +11,8 @@ from uuid import uuid4
 FULL_NODE_PORT = "30107"
 NODES_URL = "http://{}:{}/nodes" # GET RETURNS ALL THE NODES, POST ADDS NODE
 USERS_URL = "http://{}:{}/users" # GET RETURNS ALL THE USER, POST ADDS NEW USER
-USER_URL = "http://{}:{}/{}" # GET RETURNS USER DATA, POST EDITS USER DATA
-USER_CHANGE_URL = "http://{}:{}/user/{}"
+USER_URL = "http://{}:{}/user/{}" # GET RETURNS USER DATA, POST EDITS USER DATA
+
 
 # SEARCH FOR PEER NODES
 # GET CHAIN FROM OTHER NODES OR INITIALIZE BLOCKCHAIN IF NO OTHER NODE
@@ -157,7 +157,7 @@ class Node:
         for node in self.full_nodes:
             if node == sending_node:
                 continue
-            url = USER_CHANGE_URL.format(node, FULL_NODE_PORT, user.address)
+            url = USER_URL.format(node, FULL_NODE_PORT, user.address)
             try:
                 response = requests.post(url, json=data)
             except requests.exceptions.RequestException as re:
