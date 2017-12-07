@@ -8,7 +8,7 @@ import requests
 from klein import Klein
 from uuid import uuid4
 
-FULL_NODE_PORT = "30107"
+FULL_NODE_PORT = "30609"
 NODES_URL = "http://{}:{}/nodes" # GET RETURNS ALL THE NODES, POST ADDS NODE
 USERS_URL = "http://{}:{}/users" # GET RETURNS ALL THE USER, POST ADDS NEW USER
 USER_URL = "http://{}:{}/user/{}" # GET RETURNS USER DATA, POST EDITS USER DATA
@@ -188,7 +188,6 @@ class Node:
 
     @app.route('/nodes', methods=['GET'])
     def get_nodes(self, request):
-        self.request_nodes_from_all()
         response = {
             "full_nodes": list(self.full_nodes)
         }
@@ -196,7 +195,7 @@ class Node:
 
     @app.route('/nodes', methods=['POST'])
     def post_nodes(self, request):
-        request_body = json.loads(request.content.read())
+        request_body = json.loads(request.content.read().decode('utf-8'))
         host = request_body['host']
         self.add_node(host)
         response = {
