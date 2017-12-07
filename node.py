@@ -12,6 +12,7 @@ FULL_NODE_PORT = "30107"
 NODES_URL = "http://{}:{}/nodes" # GET RETURNS ALL THE NODES, POST ADDS NODE
 USERS_URL = "http://{}:{}/users" # GET RETURNS ALL THE USER, POST ADDS NEW USER
 USER_URL = "http://{}:{}/{}" # GET RETURNS USER DATA, POST EDITS USER DATA
+USER_CHANGE_URL = "http://{}:{}/user/{}"
 
 # SEARCH FOR PEER NODES
 # GET CHAIN FROM OTHER NODES OR INITIALIZE BLOCKCHAIN IF NO OTHER NODE
@@ -143,6 +144,30 @@ class Node:
         bad_nodes.clear()
         return
 
+    def broadcast_user_change(self, user, sending_node):
+        self.request_nodes_from_all()
+        bad_nodes = set()
+        data = {
+            "name": user.name,
+            "data": user.data,
+            "balance": user.balance,
+            "host": sending_node
+        }
+
+        for node in self.full_nodes:
+            if node == sending_node:
+                continue
+            url = USER_CHANGE_URL.format(node, FULL_NODE_PORT, user.address)
+            try:
+                response = requests.post(url, json=data)
+            except requests.exceptions.RequestException as re:
+                bad_nodes.add(node)
+
+        for node in bad_nodes:
+            self.remove_node(node)
+        bad_nodes.clear()
+        return
+
     def edit_user(self, user):
         pass
 
@@ -159,7 +184,7 @@ class Node:
                 return users
         except requests.exceptions.RequestException as re:
             pass
-        return 0
+        return
 
     @app.route('/nodes', methods=['GET'])
     def get_nodes(self, request):
@@ -221,25 +246,29 @@ class Node:
     @app.route('/user/<address>', methods=['POST'])
     def edit_user_by_address(self, request, address):
         user = self.peoplechain.get_user_by_address(address)
-        if user is not None:
+        if user:
             #edit
             body = json.loads(request.content.read().decode('utf-8'))
             if body['name']:
                 user.setname(body['name'])
             if body['data']:
-                data_json = json.loads(body['data'])
-                user.setdata(data_json)
-            new_balance = user.balance - 20 # 20 Coins is the transaction fees
-            user.setbalance(new_balance)
+                user.setdata(body['data'])
+            if body['host'] == self.my_node():
+                new_balance = user.balance - 20 # 20 Coins is the transaction fees
+                user.setbalance(new_balance)
+            else:
+                user.setbalance(body['balance'])
             response = {
                 "message": "User successfully updated"
             }
+            return json.dumps(response).encode('utf-8')
         else:
             response = {
                 "message": "User not found"
             }
-    
-    @app.route('/user/broadcast', methods=['GET'])
+            return json.dumps(response).encode(utf-8)
+
+    @app.route('/mine', methods=['GET'])
     def broadcast_latest_user(self, request):
         user = self.peoplechain.get_last_user()
         host = self.my_node()
@@ -248,6 +277,17 @@ class Node:
             "message": "User broadcasted to other nodes"
         }
         return json.dumps(response).encode('utf-8')
+
+    @app.route('/mine/<address>', methods=['GET'])
+    def broadcast_user_edit(self, request, address):
+        user = self.peoplechain.get_user_by_address(address)
+        if user:
+            host = self.my_node()
+            self.broadcast_user_change(user, host)
+            response = {
+                "Message": "User change successfully broadcasted to other nodes"
+            }
+            return json.dumps(response).encode('utf-8')
 
 if __name__ == '__main__':
 
