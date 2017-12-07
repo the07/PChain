@@ -7,8 +7,11 @@
 ##Instructions:
 
 > Install Python 3
+
 > install from requirement.txt
+
 > Run node.py (without host to start a new blockchain)
+
 > Run client.py
 
 ##TODO:
