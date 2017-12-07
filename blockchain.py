@@ -52,6 +52,9 @@ class Peoplechain():
     def push_unconfirmed_user(self, user):
         self.unconfirmed_users.append(user)
         return True
+    
+    def get_last_user(self):
+        return self.users[-1]
 
     def get_size(self):
         return len(self.users)

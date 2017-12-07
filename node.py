@@ -124,11 +124,11 @@ class Node:
         bad_nodes = set()
         data = {
             "user": user.to_json(),
-            "node": self.my_node()
+            "node": sending_node
         }
 
         for node in self.full_nodes:
-            if node == self.my_node() or node == sending_node:
+            if  node == sending_node:
                 continue
             url = USERS_URL.format(node, FULL_NODE_PORT)
             print ('Broadcasting to: {}'.format(node))
@@ -221,6 +221,16 @@ class Node:
     @app.route('/user/<address>', methods=['POST'])
     def edit_user_by_address(self, request, address):
         pass
+    
+    @app.route('/user/broadcast', methods=['GET'])
+    def broadcast_latest_user(self, request):
+        user = self.peoplechain.get_last_user()
+        host = self.my_node()
+        self.broadcast_user(user, host)
+        response = {
+            "message": "User broadcasted to other nodes"
+        }
+        return json.dumps(response).encode('utf-8')
 
 if __name__ == '__main__':
 
