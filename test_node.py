@@ -2,7 +2,7 @@ import json
 import socket
 
 from user import User
-from blockchain import Peoplechain
+from blockchain import Peopleschain
 
 import requests
 from klein import Klein
@@ -17,14 +17,136 @@ MINE_URL = "http://{}:{}/mine" # GET moves, user from unconfirmed_users to users
 
 class Node:
 
-    def __init__():
+    full_nodes = set()
+    app = Klein()
+
+    def __init__(self, host=None):
+
+        if host is None:
+            self.peopleschain = Peopleschain()
+            self.node = self.get_my_node()
+            self.full_nodes.add(self.node)
+        else:
+            self.add_node(host)
+            self.request_nodes(host, FULL_NODE_PORT)
+            self.broadcast_node()
+            remote_users = self.synchronize()
+            self.peopleschain = Peopleschain(remote_users)
+            self.node = self.get_my_node()
+            self.full_nodes.add(self.node)
+
+        print ("\n Full Node Server Started... \n\n")
+        self.app.run('0.0.0.0', FULL_NODE_PORT)
+
+    def get_my_node(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        my_node = s.getsockname()[0]
+        s.close()
+        return my_node
+
+    def request_nodes(self, host, port):
+        url = NODES_URL.format(host, port)
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                all_nodes = response.json()
+                return all_nodes
+        except requests.exceptions.RequestException as re:
+            pass
+        return None
+
+    def request_nodes_from_all(self):
+        full_nodes = self.full_nodes.copy()
+        bad_nodes = set()
+
+        for node in full_nodes:
+            all_nodes = self.request_nodes(node, FULL_NODE_PORT)
+            if all_nodes is not None:
+                full_nodes = full_nodes.union(all_nodes['full_nodes'])
+            else:
+                bad_nodes.add(node)
+
+        self.full_nodes = full_nodes
+
+        for node in bad_nodes:
+            self.remove_node(node)
+
+        bad_nodes.clear()
+        return
+
+    def remove_node(self, node):
         pass
+
+    def broadcast_node(self):
+
+        bad_nodes = set()
+        data = {
+            "host": self.node
+        }
+
+        for node in self.full_nodes:
+            if node == self.node:
+                continue
+            url = NODES_URL.format(node, FULL_NODE_PORT)
+            try:
+                requests.post(url, json=data) #TODO check for response and proceed accordingly
+            except requests.exceptions.RequestException as re:
+                bad_nodes.add(node)
+
+        for node in bad_nodes:
+            self.remove_node(node)
+        bad_nodes.clear()
+        return
+
+    def synchronize(self):
+
+        self.request_nodes_from_all()
+        longest = 0
+        for node in self.full_nodes:
+            if node == self.node:
+                continue
+            url = USERS_URL.format(node, FULL_NODE_PORT)
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    users_list = response.json()
+                    if len(users_list) > longest:
+                        longest = len(users_list)
+                        users = []
+                        for user_list in users_list:
+                            user = User(user_list['_address'], user_list['_name'], user_list['_balance'], user_list['_data'])
+                            users.append(user)
+            except requests.exceptions.RequestException as re:
+                pass
+        return users
 
     def add_node(self, node):
-        pass
+
+        if node == self.node:
+            return
+
+        if node not in self.full_nodes:
+            self.full_nodes.add(node)
 
     def broadcast_users(self, user_list):
-        pass
+
+        self.request_nodes_from_all()
+        bad_nodes = set()
+        data = [user.__dict__ for user in user_list]
+        for node in self.full_nodes:
+            if node == self.node:
+                continue
+            url = USERS_URL.format(node, FULL_NODE_PORT)
+            try:
+                requests.post(url, json=data)
+            except requests.exceptions.RequestException as re:
+                bad_nodes.add(node)
+
+        for node in bad_nodes:
+            self.remove_node(node)
+        bad_nodes.clear()
+        return
 
     @app.route('/nodes', methods=['GET'])
     def get_nodes(self, request):
@@ -49,7 +171,6 @@ class Node:
 
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
-        users = []
         users_list = json.loads(request.content.read().decode('utf-8'))
         for user_list in users_list:
             user = User(user_list['_address'], user_list['_name'], user_list['_balance'], user_list['_data'])
@@ -80,7 +201,7 @@ class Node:
 
     @app.route('/view/<address>', methods=['GET'])
     def get_user_by_address(self, request, address):
-        user = self.peoplechain.get_user_by_address(address)
+        user = self.peopleschain.get_user_by_address(address)
         if user is not None:
             response = {
                 "user": user.to_json()
@@ -96,12 +217,13 @@ class Node:
     @app.route('/edit/<address>', methods=['POST'])
     def edit_user_by_address(self, request, address):
         #TODO : implement signatures to restrict access
-        user = self.peoplechain.get_user_by_address(address)
+        user = self.peopleschain.get_user_by_address(address)
         if user is not None:
             #TODO: code to edit a user profile
             # pop user from chain.users,
             # create new user object with new data but same address
             # push to unconfirmed users
+            pass
         else:
             response = {
                 "message": "User Not Found"
@@ -129,3 +251,7 @@ class Node:
         self.broadcast_users(broadcast_user_list) #TODO: create a function to broadcast a list of users
 
         return json.dumps(response).encode('utf-8')
+
+if __name__ == '__main__':
+
+    node = Node()

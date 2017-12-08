@@ -8,7 +8,7 @@ from user import *
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class Peoplechain():
+class Peopleschain():
 
     users = []
     unconfirmed_users = []
@@ -43,9 +43,12 @@ class Peoplechain():
         print ("#################### GENESIS USER CREATED ################\n")
         return genesis_user
 
-    def add_user(self, user):
+    def add_user(self, new_user):
         with self.users_lock:
-            self.users.append(user)
+            for user in self.users:
+                if user.address == new_user.address:
+                    self.users.remove(user)
+                    self.users.append(new_user)
             return True
         return False
 
