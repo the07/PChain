@@ -130,8 +130,6 @@ class Node:
             self.full_nodes.add(node)
 
     def broadcast_users(self, user_list):
-
-        self.request_nodes_from_all()
         bad_nodes = set()
         data = [user.__dict__ for user in user_list]
         for node in self.full_nodes:
@@ -172,6 +170,7 @@ class Node:
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
         users_list = json.loads(request.content.read().decode('utf-8'))
+        print (users_list)
         for user_list in users_list:
             user = User(user_list['_address'], user_list['_name'], user_list['_balance'], user_list['_data'])
             self.peopleschain.add_user(user)
@@ -182,10 +181,9 @@ class Node:
 
     @app.route('/create', methods=['POST'])
     def create_user(self, request):
-        body = json.loads(request.content.read().decode('utf-8'))
-        user_json = json.loads(body['user'])
+        user_json = json.loads(request.content.read().decode('utf-8'))
         user_address = user_json['_address']
-        if self.peopleschain.get_user_by_address(user_address):
+        if self.peopleschain.get_user_by_address(user_address): #TODO: should also check for user in unconfirmed users
             response = {
                 "message": "User already exists"
             }
@@ -223,7 +221,24 @@ class Node:
             # pop user from chain.users,
             # create new user object with new data but same address
             # push to unconfirmed users
-            pass
+            address = user.address
+            name = user.name
+            balance = user.balance
+            data = user.data
+            balance -= 20 #Charge 20 coins as transaction fees
+            self.peopleschain.remove_user_by_address(address)
+            new_user_data_json = json.loads(request.content.read().decode('utf-8'))
+            if 'name' in new_user_data_json:
+                name = new_user_data_json['name']
+            if 'data' in new_user_data_json:
+                for each_item in new_user_data_json['data']:
+                    data[each_item] = new_user_data_json['data'][each_item]
+            edited_user = User(address, name, balance, data)
+            self.peopleschain.push_unconfirmed_user(edited_user)
+            response = {
+                "message": "Profile updated, update will reflect once the profile is mined."
+            }
+            return json.dumps(response).encode('utf-8')
         else:
             response = {
                 "message": "User Not Found"
@@ -248,7 +263,7 @@ class Node:
         response = {
             "message": "Users mined into the blockchain"
         }
-        self.broadcast_users(broadcast_user_list) #TODO: create a function to broadcast a list of users
+        self.broadcast_users(broadcast_user_list) 
 
         return json.dumps(response).encode('utf-8')
 

@@ -15,15 +15,11 @@ class Peopleschain():
 
     def __init__(self, users=None):
 
-        self.users_lock = threading.Lock()
-
         if users is None:
-
             genesis_user = self.get_genesis_user()
-            self.add_user(genesis_user)
-
+            self.users.append(genesis_user)
+            print (self.users)
         else:
-
             for user in users:
                 self.add_user(user)
 
@@ -33,7 +29,7 @@ class Peopleschain():
         print ("#################### CREATING GENESIS USER ################\n")
 
         genesis_user_address = '0409eb9224f408ece7163f40a33274d99ab6b3f60e41b447dd45fcc6371f57b88d9d3583c358b1ea8aea4422d17c57de1418554d3a1cd620ca4cb296357888ea596'
-        genesis_user_name = 'Network'
+        genesis_user_name = 'Peopleschain Network'
         genesis_user_balance = 100000000000000
         genesis_user_data = {
             "Location": "Bangalore"
@@ -44,13 +40,12 @@ class Peopleschain():
         return genesis_user
 
     def add_user(self, new_user):
-        with self.users_lock:
-            for user in self.users:
-                if user.address == new_user.address:
-                    self.users.remove(user)
-                    self.users.append(new_user)
-            return True
-        return False
+        #TODO: Handle popping for edits
+        for user in self.users:
+            if user.address == new_user.address:
+                self.users.remove(user)
+        self.users.append(new_user)
+        return
 
     def push_unconfirmed_user(self, user):
         self.unconfirmed_users.append(user)
@@ -61,6 +56,12 @@ class Peopleschain():
 
     def get_last_user(self):
         return self.users[-1]
+
+    def remove_user_by_address(self, address):
+        for user in self.users:
+            if user.address == address:
+                self.users.remove(user)
+                return
 
     def get_size(self):
         return len(self.users)
