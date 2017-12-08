@@ -52,7 +52,10 @@ class Peoplechain():
     def push_unconfirmed_user(self, user):
         self.unconfirmed_users.append(user)
         return True
-    
+
+    def get_unconfirmed_users(self):
+        return self.unconfirmed_users
+
     def get_last_user(self):
         return self.users[-1]
 
@@ -63,7 +66,7 @@ class Peoplechain():
         for user in self.users:
             if user.address == address:
                 return user
-        return False
+        return None
 
     def get_all_users(self):
         return self.users
