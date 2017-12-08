@@ -27,12 +27,12 @@ class Node:
             self.node = self.get_my_node()
             self.full_nodes.add(self.node)
         else:
+            self.node = self.get_my_node()
             self.add_node(host)
             self.request_nodes(host, FULL_NODE_PORT)
             self.broadcast_node()
             remote_users = self.synchronize()
             self.peopleschain = Peopleschain(remote_users)
-            self.node = self.get_my_node()
             self.full_nodes.add(self.node)
 
         print ("\n Full Node Server Started... \n\n")
@@ -263,10 +263,14 @@ class Node:
         response = {
             "message": "Users mined into the blockchain"
         }
-        self.broadcast_users(broadcast_user_list) 
+        self.broadcast_users(broadcast_user_list)
 
         return json.dumps(response).encode('utf-8')
 
 if __name__ == '__main__':
 
-    node = Node()
+    host = str(input("Enter host: (Leave blank to start a new chain)"))
+    if host == '':
+        node = Node()
+    else:
+        node = Node(host)
