@@ -2,58 +2,51 @@ import json
 import socket
 
 from user import User
-from blockchain import Peoplechain
+from blockchain import Peopleschain
 
 import requests
 from klein import Klein
-from uuid import uuid4
 
 FULL_NODE_PORT = "30609"
 NODES_URL = "http://{}:{}/nodes" # GET RETURNS ALL THE NODES, POST ADDS NODE
-USERS_URL = "http://{}:{}/users" # GET RETURNS ALL THE USER, POST ADDS NEW USER
-USER_URL = "http://{}:{}/user/{}" # GET RETURNS USER DATA, POST EDITS USER DATA
-
-
-# SEARCH FOR PEER NODES
-# GET CHAIN FROM OTHER NODES OR INITIALIZE BLOCKCHAIN IF NO OTHER NODE
-# BROADCAST NODEs
-# BROADCAST NEW USER/USER CHANGE
-# ACCEPT NODES
-# SEND CHAIN
-# ACCEPT NEW USERS/USER CHANGE
+USERS_URL = "http://{}:{}/users" # GET RETURNS ALL THE USER, POST ADDS NEW USER to chain.users
+CREATE_USER_URL = "http://{}:{}/create" # POST ADD NEW USER TO UNCONFIRMED USERS
+VIEW_USER_URL = "http://{}:{}/view/{}" # GET RETURNS USER DATA FROM USERS
+EDIT_USER_URL = "http://{}:{}/edit/{}" # POST pops user from USER, ADDS NEW DATA TO UNCONFIRMED USER GET just pops the data from USERS
+MINE_URL = "http://{}:{}/mine" # GET moves, user from unconfirmed_users to users # PROOF OF WORK COMES IN HERE
 
 class Node:
 
     full_nodes = set()
     app = Klein()
 
-    def __init__(self, full_node=None):
+    def __init__(self, host=None):
 
-        if full_node is None:
-            self.peoplechain = Peoplechain()
-            self.full_nodes.add(self.my_node())
+        if host is None:
+            self.peopleschain = Peopleschain()
+            self.node = self.get_my_node()
+            self.full_nodes.add(self.node)
         else:
-            self.add_node(full_node)
-            self.request_nodes(full_node, FULL_NODE_PORT)
-            self.request_nodes_from_all()
+            self.node = self.get_my_node()
+            self.add_node(host)
+            self.request_nodes(host, FULL_NODE_PORT)
             self.broadcast_node()
-            longest = 0
-            for node in self.full_nodes:
-                user_chain = self.request_users(node)
-                if len(user_chain) > longest:
-                    remote_users = user_chain
-                    longest = len(user_chain)
+            remote_users = self.synchronize()
+            self.peopleschain = Peopleschain(remote_users)
+            self.full_nodes.add(self.node)
 
-            self.peoplechain = Peoplechain(remote_users)
-            self.full_nodes.add(self.my_node())
-
-        print ("\nFull node server started...\n\n")
+        print ("\n Full Node Server Started... \n\n")
         self.app.run('0.0.0.0', FULL_NODE_PORT)
 
-    def request_nodes(self, node, port):
-        if node == self.my_node():
-            return None
-        url = NODES_URL.format(node, port)
+    def get_my_node(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        my_node = s.getsockname()[0]
+        s.close()
+        return my_node
+
+    def request_nodes(self, host, port):
+        url = NODES_URL.format(host, port)
         try:
             response = requests.get(url)
             if response.status_code == 200:
@@ -70,46 +63,79 @@ class Node:
         for node in full_nodes:
             all_nodes = self.request_nodes(node, FULL_NODE_PORT)
             if all_nodes is not None:
-                full_nodes = full_nodes.union(all_nodes["full_nodes"])
+                full_nodes = full_nodes.union(all_nodes['full_nodes'])
             else:
                 bad_nodes.add(node)
 
-        self.full_nodes = full_nodes #NOW DOWNLOAD BLOCKCHAIN FROM ALL NODES AND SET THE LONGEST CHAIN AS MY CHAIN
+        self.full_nodes = full_nodes
 
         for node in bad_nodes:
             self.remove_node(node)
-        return
 
-    def my_node(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        my_node = s.getsockname()[0]
-        s.close()
-        return my_node
+        bad_nodes.clear()
+        return
 
     def remove_node(self, node):
         pass
 
-    def add_node(self, host):
-
-        if host == self.my_node():
-            return
-
-        if host not in self.full_nodes:
-            self.full_nodes.add(host)
-
     def broadcast_node(self):
 
         bad_nodes = set()
-        my_node = self.my_node()
         data = {
-            "host": my_node
+            "host": self.node
         }
 
         for node in self.full_nodes:
-            if node == my_node:
+            if node == self.node:
                 continue
             url = NODES_URL.format(node, FULL_NODE_PORT)
+            try:
+                requests.post(url, json=data) #TODO check for response and proceed accordingly
+            except requests.exceptions.RequestException as re:
+                bad_nodes.add(node)
+
+        for node in bad_nodes:
+            self.remove_node(node)
+        bad_nodes.clear()
+        return
+
+    def synchronize(self):
+
+        self.request_nodes_from_all()
+        longest = 0
+        for node in self.full_nodes:
+            if node == self.node:
+                continue
+            url = USERS_URL.format(node, FULL_NODE_PORT)
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    users_list = response.json()
+                    if len(users_list) > longest:
+                        longest = len(users_list)
+                        users = []
+                        for user_list in users_list:
+                            user = User(user_list['_address'], user_list['_name'], user_list['_balance'], user_list['_data'])
+                            users.append(user)
+            except requests.exceptions.RequestException as re:
+                pass
+        return users
+
+    def add_node(self, node):
+
+        if node == self.node:
+            return
+
+        if node not in self.full_nodes:
+            self.full_nodes.add(node)
+
+    def broadcast_users(self, user_list):
+        bad_nodes = set()
+        data = [user.__dict__ for user in user_list]
+        for node in self.full_nodes:
+            if node == self.node:
+                continue
+            url = USERS_URL.format(node, FULL_NODE_PORT)
             try:
                 requests.post(url, json=data)
             except requests.exceptions.RequestException as re:
@@ -120,74 +146,6 @@ class Node:
         bad_nodes.clear()
         return
 
-    def broadcast_user(self, user, sending_node):
-        self.request_nodes_from_all()
-        bad_nodes = set()
-        data = {
-            "user": user.to_json(),
-            "node": sending_node
-        }
-
-        for node in self.full_nodes:
-            print ('Broadcasting\n')
-            if  node == sending_node:
-                continue
-            url = USERS_URL.format(node, FULL_NODE_PORT)
-            print ('Broadcasting to: {}'.format(node))
-            try:
-                response = requests.post(url, json=data)
-                print ('Node: {} - Response: {}'.format(node, response))
-            except requests.exceptions.RequestException as re:
-                bad_nodes.add(node)
-
-        for node in bad_nodes:
-            self.remove_node(node)
-        bad_nodes.clear()
-        return
-
-    def broadcast_user_change(self, user, sending_node):
-        self.request_nodes_from_all()
-        bad_nodes = set()
-        data = {
-            "name": user.name,
-            "data": user.data,
-            "balance": user.balance,
-            "host": sending_node
-        }
-
-        for node in self.full_nodes:
-            print ('Broadcasting\n')
-            if node == sending_node:
-                continue
-            url = USER_URL.format(node, FULL_NODE_PORT, user.address)
-            try:
-                response = requests.post(url, json=data)
-            except requests.exceptions.RequestException as re:
-                bad_nodes.add(node)
-
-        for node in bad_nodes:
-            self.remove_node(node)
-        bad_nodes.clear()
-        return
-
-    def edit_user(self, user):
-        pass
-
-    def request_users(self, node):
-        url = USERS_URL.format(node, FULL_NODE_PORT)
-        users = []
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                users_list = response.json()
-                for user_list in users_list:
-                    user = User(user_list['_address'], user_list['_name'], user_list['_balance'], user_list['_data'])
-                    users.append(user)
-                return users
-        except requests.exceptions.RequestException as re:
-            pass
-        return
-
     @app.route('/nodes', methods=['GET'])
     def get_nodes(self, request):
         response = {
@@ -196,105 +154,123 @@ class Node:
         return json.dumps(response).encode('utf-8')
 
     @app.route('/nodes', methods=['POST'])
-    def post_nodes(self, request):
-        request_body = json.loads(request.content.read().decode('utf-8'))
-        host = request_body['host']
-        self.add_node(host)
+    def post_node(self, request):
+        request = json.loads(request.content.read().decode('utf-8'))
+        host = request['host']
+        self.add_node(host) #TODO: create a add_node function
         response = {
-            "message": "Node registered"
+            "message": "Node Register"
         }
         return json.dumps(response).encode('utf-8')
 
     @app.route('/users', methods=['GET'])
     def get_users(self, request):
-        return json.dumps([user.__dict__ for user in self.peoplechain.get_all_users()]).encode('utf-8')
+        return json.dumps([user.__dict__ for user in self.peopleschain.get_all_users()]).encode('utf-8')
 
     @app.route('/users', methods=['POST'])
     def post_users(self, request):
-        body = json.loads(request.content.read().decode('utf-8'))
-        user_json = json.loads(body['user'])
-        sending_node = body['node']
-        print ("New user data arrived")
-        user_address = user_json['_address']
-        if self.peoplechain.get_user_by_address(user_address):
-            response = {
-             "message": "user already exists"
-            }
+        users_list = json.loads(request.content.read().decode('utf-8'))
+        print (users_list)
+        for user_list in users_list:
+            user = User(user_list['_address'], user_list['_name'], user_list['_balance'], user_list['_data'])
+            self.peopleschain.add_user(user)
+        response = {
+            "message": "Blockchain updated"
+        }
+        return json.dumps(response).encode('utf-8')
 
+    @app.route('/create', methods=['POST'])
+    def create_user(self, request):
+        user_json = json.loads(request.content.read().decode('utf-8'))
+        user_address = user_json['_address']
+        if self.peopleschain.get_user_by_address(user_address): #TODO: should also check for user in unconfirmed users
+            response = {
+                "message": "User already exists"
+            }
             return json.dumps(response)
         else:
             user = User(user_json['_address'], user_json['_name'], user_json['_balance'], user_json['_data'])
-            self.peoplechain.add_user(user)
-            print ("New user added to chain, mine to broadcast to other on the network")
+            self.peopleschain.push_unconfirmed_user(user)
+            print ("New user data available, mine to add to chain")
             response = {
-                'success': "User added"
+                "message": "User created, will be added in the next mine"
             }
             return json.dumps(response).encode('utf-8')
 
-    @app.route('/user/<address>', methods=['GET'])
+    @app.route('/view/<address>', methods=['GET'])
     def get_user_by_address(self, request, address):
-        user = self.peoplechain.get_user_by_address(address)
+        user = self.peopleschain.get_user_by_address(address)
         if user is not None:
             response = {
                 "user": user.to_json()
             }
-            return json.dumps(response)
+            return json.dumps(response).encode('utf-8')
         else:
             response = {
                 "message": "User not found"
             }
             return json.dumps(response).encode('utf-8')
 
-    @app.route('/user/<address>', methods=['POST'])
+
+    @app.route('/edit/<address>', methods=['POST'])
     def edit_user_by_address(self, request, address):
-        user = self.peoplechain.get_user_by_address(address)
-        if user:
-            #edit
-            body = json.loads(request.content.read().decode('utf-8'))
-            if body['name']:
-                user.setname(body['name'])
-            if body['data']:
-                user.setdata(body['data'])
-            if body['host'] == self.my_node():
-                new_balance = user.balance - 20 # 20 Coins is the transaction fees
-                user.setbalance(new_balance)
-            else:
-                user.setbalance(body['balance'])
+        #TODO : implement signatures to restrict access
+        user = self.peopleschain.get_user_by_address(address)
+        if user is not None:
+            #TODO: code to edit a user profile
+            # pop user from chain.users,
+            # create new user object with new data but same address
+            # push to unconfirmed users
+            address = user.address
+            name = user.name
+            balance = user.balance
+            data = user.data
+            balance -= 20 #Charge 20 coins as transaction fees
+            self.peopleschain.remove_user_by_address(address)
+            new_user_data_json = json.loads(request.content.read().decode('utf-8'))
+            if 'name' in new_user_data_json:
+                name = new_user_data_json['name']
+            if 'data' in new_user_data_json:
+                for each_item in new_user_data_json['data']:
+                    data[each_item] = new_user_data_json['data'][each_item]
+            edited_user = User(address, name, balance, data)
+            self.peopleschain.push_unconfirmed_user(edited_user)
             response = {
-                "message": "User successfully updated"
+                "message": "Profile updated, update will reflect once the profile is mined."
             }
             return json.dumps(response).encode('utf-8')
         else:
             response = {
-                "message": "User not found"
+                "message": "User Not Found"
             }
-            return json.dumps(response).encode(utf-8)
+            return json.dumps(response).encode('utf-8')
 
     @app.route('/mine', methods=['GET'])
-    def broadcast_latest_user(self, request):
-        user = self.peoplechain.get_last_user()
-        host = self.my_node()
-        self.broadcast_user(user, host)
-        response = {
-            "message": "User broadcasted to other nodes"
-        }
-        return json.dumps(response).encode('utf-8')
-
-    @app.route('/mine/<address>', methods=['GET'])
-    def broadcast_user_edit(self, request, address):
-        user = self.peoplechain.get_user_by_address(address)
-        if user:
-            host = self.my_node()
-            self.broadcast_user_change(user, host)
+    def mine(self, request):
+        if len(self.peopleschain.unconfirmed_users) == 0:
             response = {
-                "message": "User change successfully broadcasted to other nodes"
+                "message": "No users to mine"
             }
             return json.dumps(response).encode('utf-8')
+        broadcast_user_list = self.peopleschain.unconfirmed_users.copy()
+        while self.peopleschain.unconfirmed_users:
+            user = self.peopleschain.unconfirmed_users.pop(0)
+            self.peopleschain.add_user(user)
+
+        print ('Users mined, now broadcasting to network...')
+        #TODO: implement proof of work
+
+        response = {
+            "message": "Users mined into the blockchain"
+        }
+        self.broadcast_users(broadcast_user_list)
+
+        return json.dumps(response).encode('utf-8')
 
 if __name__ == '__main__':
 
-    host = str(input("Enter host to connect to network (Leave blank to start a new chain)"))
-    if host:
-        node = Node(host)
-    else:
+    host = str(input("Enter host: (Leave blank to start a new chain)"))
+    if host == '':
         node = Node()
+    else:
+        node = Node(host)
